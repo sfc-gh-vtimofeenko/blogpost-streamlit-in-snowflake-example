@@ -55,6 +55,11 @@ USE ROLE sysadmin;
 CREATE GIT REPOSITORY IF NOT EXISTS sample_streamlit_db.public.sample_repo
     API_INTEGRATION = gh_sample_blogpost
     ORIGIN = 'https://github.com/sfc-gh-vtimofeenko/blogpost-streamlit-in-snowflake-example';
+CREATE TASK sample_streamlit_db.public.sample_repo_fetch
+    SCHEDULE = 'USING CRON 0 0 10-20 * TUE,THU UTC' -- sample schedule
+    AS
+    ALTER GIT REPOSITORY sample_streamlit_db.public.sample_repo FETCH;
+ALTER TASK sample_streamlit_db.public.sample_repo_fetch RESUME;
 
 -- Optional, if using custom role
 GRANT USAGE ON DATABASE sample_streamlit_db TO ROLE sample_streamlit_owner_role;
