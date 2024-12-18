@@ -1,0 +1,16 @@
+definition_version: '2'
+entities:
+  Sample_deployment_app:
+    type: streamlit
+    identifier:
+      name: Sample_deployment_app
+    main_file: streamlit_app.py
+    pages_dir: pages
+    query_warehouse: adhoc
+    stage: sample_deployment_stage
+    artifacts:
+      - streamlit_app.py
+      - environment.yml
+      - pages
+      - common/hello.py
+
