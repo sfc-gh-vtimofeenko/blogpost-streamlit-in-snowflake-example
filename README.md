@@ -12,22 +12,65 @@ or via `GIT REPOSITORY` integration.
 
 # `GIT REPOSITORY` deployment instructions
 
-As a single sequence of SQL statements:
+This sequence of SQL statements will:
 
-```
-USE ROLE ACCOUNTADMIN; -- or a different role with CREATE API INTEGRATION privilege
+- Create a role that will own the `STREAMLIT` object (needed because of [owner's rights][2])
+- Create a dedicated database
+- Create a dedicated warehouse
+- Create an API integration
+- Create a `GIT REPOSITORY` object
+- Create a `STREAMLIT` object from the `GIT REPOSITORY`
+- Share the `STREAMLIT` object with a role (`SYSADMIN`)
 
-CREATE OR REPLACE API INTEGRATION sample_git_integration
+The complete sequence of steps is not strictly necessary, but this procedure can
+be used to isolate applications using RBAC.
+
+```sql
+-- Optional: set up dedicated role to own the Streamlit app
+USE ROLE useradmin;
+CREATE ROLE IF NOT EXISTS sample_streamlit_owner_role;
+GRANT ROLE sample_streamlit_owner_role TO ROLE sysadmin;
+-- End of role setup
+
+-- Optional: database setup
+USE ROLE sysadmin;
+CREATE DATABASE IF NOT EXISTS sample_streamlit_db;
+-- End of database setup
+
+-- Optional: if using a custom warehouse
+CREATE WAREHOUSE IF NOT EXISTS sample_streamlit_wh WITH
+    WAREHOUSE_SIZE = XSMALL
+    INITIALLY_SUSPENDED = TRUE
+;
+GRANT USAGE ON WAREHOUSE sample_streamlit_wh to ROLE sample_streamlit_owner_role;
+-- End of warehouse setup
+
+USE ROLE ACCOUNTADMIN;
+CREATE API INTEGRATION IF NOT EXISTS gh_sample_blogpost
     API_PROVIDER = GIT_HTTPS_API
-    API_ALLOWED_PREFIXES = ('https://github.com/<gitHubOrgName>')
+    API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-vtimofeenko/blogpost-streamlit-in-snowflake-example')
     ENABLED = TRUE;
 
-CREATE OR REPLACE GIT REPOSITORY <path.to.gitRepository>
-    API_INTEGRATION = sample_git_integration
-    ORIGIN = 'https://github.com/<gitHubOrgName>/<repoName>';
+USE ROLE sysadmin;
+CREATE GIT REPOSITORY IF NOT EXISTS sample_streamlit_db.public.sample_repo
+    API_INTEGRATION = gh_sample_blogpost
+    ORIGIN = 'https://github.com/sfc-gh-vtimofeenko/blogpost-streamlit-in-snowflake-example';
 
-CREATE OR REPLACE STREAMLIT <path.to.Streamlit.app>
-    ROOT_LOCATION = '@<path.to.gitRepository>/branches/main'
-    MAIN_FILE = '/streamlit_app.py'; -- as an example
+-- Optional, if using custom role
+GRANT USAGE ON DATABASE sample_streamlit_db TO ROLE sample_streamlit_owner_role;
+GRANT USAGE ON SCHEMA sample_streamlit_db.public TO ROLE sample_streamlit_owner_role;
+GRANT READ ON GIT REPOSITORY sample_streamlit_db.public.sample_repo TO ROLE sample_streamlit_owner_role;
+GRANT CREATE STREAMLIT ON SCHEMA sample_streamlit_db.public TO ROLE sample_streamlit_owner_role;
+USE ROLE sample_streamlit_owner_role;
+--
+
+CREATE STREAMLIT IF NOT EXISTS sample_streamlit_db.public.sample_git_deployed_streamlit
+    ROOT_LOCATION = '@sample_streamlit_db.public.sample_repo/branches/main'
+    MAIN_FILE = '/streamlit_app.py'
+    QUERY_WAREHOUSE = sample_streamlit_wh; -- Replace the warehouse if needed
+
+-- Share the streamlit app with needed roles
+GRANT USAGE ON STREAMLIT sample_streamlit_db.public.sample_git_deployed_streamlit TO ROLE SYSADMIN;
 ```
 [1]: TODO
+[2]: https://docs.snowflake.com/en/developer-guide/streamlit/owners-rights
