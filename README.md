@@ -45,7 +45,7 @@ CREATE WAREHOUSE IF NOT EXISTS sample_streamlit_wh WITH
 GRANT USAGE ON WAREHOUSE sample_streamlit_wh to ROLE sample_streamlit_owner_role;
 -- End of warehouse setup
 
-USE ROLE ACCOUNTADMIN;
+USE ROLE accountadmin;
 CREATE API INTEGRATION IF NOT EXISTS gh_sample_blogpost
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-vtimofeenko/blogpost-streamlit-in-snowflake-example')
